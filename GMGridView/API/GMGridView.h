@@ -72,6 +72,8 @@ typedef enum
 @property (nonatomic) CFTimeInterval minimumPressDuration;            // Default is 0.2; if set to 0, the scrollView will not be scrollable
 @property (nonatomic) BOOL showFullSizeViewWithAlphaWhenTransforming; // Default is YES - not working right now
 
+@property (nonatomic, strong) IBOutlet UIView *gridHeaderView;
+@property (nonatomic, strong) IBOutlet UIView *gridFooterView;
 
 // Reusable cells
 - (GMGridViewCell *)dequeueReusableCell;
