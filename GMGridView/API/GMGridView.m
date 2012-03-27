@@ -147,6 +147,9 @@ static const UIViewAnimationOptions kDefaultAnimationOptions = UIViewAnimationOp
 @synthesize firstPositionLoaded = _firstPositionLoaded;
 @synthesize lastPositionLoaded = _lastPositionLoaded;
 
+@synthesize gridFooterView = _gridFooterView;
+@synthesize gridHeaderView = _gridHeaderView;
+
 //////////////////////////////////////////////////////////////
 #pragma mark Constructors and destructor
 //////////////////////////////////////////////////////////////
@@ -316,6 +319,60 @@ static const UIViewAnimationOptions kDefaultAnimationOptions = UIViewAnimationOp
         
         _editing = editing;
     }
+}
+
+- (void)setGridHeaderView:(UIView *)gridHeaderView{
+    if (_gridHeaderView == gridHeaderView) {
+        return;
+    }
+    
+    [_gridHeaderView removeFromSuperview];
+	[_gridHeaderView release];
+	
+	_gridHeaderView = [gridHeaderView retain];
+    
+    UIEdgeInsets tmpEdgeInsets = self.minEdgeInsets;
+	if ( _gridHeaderView != nil )
+	{
+		[self addSubview: _gridHeaderView];
+        tmpEdgeInsets.top = _gridHeaderView.frame.size.height;
+	}else {
+        tmpEdgeInsets.top = 0.0f;
+    }
+	
+	[self setMinEdgeInsets:tmpEdgeInsets];
+}
+
+- (UIView *) gridHeaderView
+{
+	return ( [[_gridHeaderView retain] autorelease] );
+}
+
+- (void)setGridFooterView:(UIView *)gridFooterView{
+    if (_gridFooterView == gridFooterView) {
+        return;
+    }
+    
+	[_gridFooterView removeFromSuperview];
+	[_gridFooterView release];
+	
+	_gridFooterView = [gridFooterView retain];
+    
+    UIEdgeInsets tmpEdgeInsets = self.minEdgeInsets;
+	if ( _gridFooterView != nil )
+	{
+		[self addSubview: _gridFooterView];
+        tmpEdgeInsets.bottom = _gridFooterView.frame.size.height;
+	}else {
+        tmpEdgeInsets.bottom = 0.0f;
+    }
+	
+	[self setMinEdgeInsets:tmpEdgeInsets];
+}
+
+- (UIView *) gridFooterView
+{
+	return ( [[_gridFooterView retain] autorelease] );
 }
 
 //////////////////////////////////////////////////////////////
