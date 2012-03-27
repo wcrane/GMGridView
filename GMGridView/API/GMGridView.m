@@ -327,9 +327,9 @@ static const UIViewAnimationOptions kDefaultAnimationOptions = UIViewAnimationOp
     }
     
     [_gridHeaderView removeFromSuperview];
-	[_gridHeaderView release];
+	_gridHeaderView = nil;
 	
-	_gridHeaderView = [gridHeaderView retain];
+	_gridHeaderView = gridHeaderView;
     
     UIEdgeInsets tmpEdgeInsets = self.minEdgeInsets;
 	if ( _gridHeaderView != nil )
@@ -345,7 +345,7 @@ static const UIViewAnimationOptions kDefaultAnimationOptions = UIViewAnimationOp
 
 - (UIView *) gridHeaderView
 {
-	return ( [[_gridHeaderView retain] autorelease] );
+	return ( _gridHeaderView );
 }
 
 - (void)setGridFooterView:(UIView *)gridFooterView{
@@ -354,9 +354,9 @@ static const UIViewAnimationOptions kDefaultAnimationOptions = UIViewAnimationOp
     }
     
 	[_gridFooterView removeFromSuperview];
-	[_gridFooterView release];
+	_gridFooterView = nil;
 	
-	_gridFooterView = [gridFooterView retain];
+	_gridFooterView = gridFooterView;
     
     UIEdgeInsets tmpEdgeInsets = self.minEdgeInsets;
 	if ( _gridFooterView != nil )
@@ -372,7 +372,7 @@ static const UIViewAnimationOptions kDefaultAnimationOptions = UIViewAnimationOp
 
 - (UIView *) gridFooterView
 {
-	return ( [[_gridFooterView retain] autorelease] );
+	return ( _gridFooterView );
 }
 
 //////////////////////////////////////////////////////////////
