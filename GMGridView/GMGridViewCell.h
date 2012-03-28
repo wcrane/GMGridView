@@ -1,8 +1,8 @@
 //
-//  UIGestureRecognizer+GMGridViewGestureAdditions.h
+//  GMGridViewCell.h
 //  GMGridView
 //
-//  Created by Gulam Moledina on 11-10-30.
+//  Created by Gulam Moledina on 11-10-22.
 //  Copyright (c) 2011 GMoledina.ca. All rights reserved.
 //
 //  Latest code can be found on GitHub: https://github.com/gmoledina/GMGridView
@@ -27,10 +27,16 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "GMGridView-Constants.h"
 
-@interface UIGestureRecognizer (GMGridViewAdditions)
+@interface GMGridViewCell : UIView
 
-- (void)end;
-- (BOOL)hasRecognizedValidGesture;
+@property (nonatomic, strong) UIView *contentView;         // The contentView - default is nil
+@property (nonatomic, strong) UIImage *deleteButtonIcon;   // Delete button image
+@property (nonatomic) CGPoint deleteButtonOffset;          // Delete button offset relative to the origin
+@property (nonatomic, strong) NSString *reuseIdentifier;
+
+/// Override to release custom data before cell is reused.
+- (void)prepareForReuse;
 
 @end

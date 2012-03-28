@@ -1,5 +1,5 @@
 //
-//  UIView+GMGridViewShake.h
+//  UIView+GMGridViewShake.m
 //  GMGridView
 //
 //  Created by Gulam Moledina on 11-10-22.
@@ -26,10 +26,39 @@
 //  THE SOFTWARE.
 //
 
-#import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
+#import "UIView+GMGridViewAdditions.h"
 
-@interface UIView (GMGridViewAdditions)
+@interface UIView (GMGridViewAdditions_Privates)
 
-- (void)shakeStatus:(BOOL)enabled;
+
+@end
+
+
+
+
+@implementation UIView (GMGridViewAdditions)
+
+- (void)shakeStatus:(BOOL)enabled
+{
+    if (enabled) 
+    {
+        CGFloat rotation = 0.03;
+        
+        CABasicAnimation *shake = [CABasicAnimation animationWithKeyPath:@"transform"];
+        shake.duration = 0.13;
+        shake.autoreverses = YES;
+        shake.repeatCount  = MAXFLOAT;
+        shake.removedOnCompletion = NO;
+        shake.fromValue = [NSValue valueWithCATransform3D:CATransform3DRotate(self.layer.transform,-rotation, 0.0 ,0.0 ,1.0)];
+        shake.toValue   = [NSValue valueWithCATransform3D:CATransform3DRotate(self.layer.transform, rotation, 0.0 ,0.0 ,1.0)];
+        
+        [self.layer addAnimation:shake forKey:@"shakeAnimation"];
+    }
+    else
+    {
+        [self.layer removeAnimationForKey:@"shakeAnimation"];
+    }
+}
 
 @end

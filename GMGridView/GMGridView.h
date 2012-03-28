@@ -27,6 +27,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "GMGridView-Constants.h"
 #import "GMGridViewCell.h"
 
 @protocol GMGridViewDataSource;
@@ -41,50 +42,75 @@ typedef enum
     GMGridViewStyleSwap
 } GMGridViewStyle;
 
+typedef enum
+{
+	GMGridViewScrollPositionNone,
+	GMGridViewScrollPositionTop,
+	GMGridViewScrollPositionMiddle,
+	GMGridViewScrollPositionBottom
+} GMGridViewScrollPosition;
+
+typedef enum
+{
+    GMGridViewItemAnimationNone = 0,
+    GMGridViewItemAnimationFade,
+    GMGridViewItemAnimationScroll = 1<<7 // scroll to the item before showing the animation
+} GMGridViewItemAnimation;
 
 //////////////////////////////////////////////////////////////
 #pragma mark Interface GMGridView
 //////////////////////////////////////////////////////////////
 
-@interface GMGridView : UIView
-{
-    
-}
+@interface GMGridView : UIScrollView
 
 // Delegates
-@property (nonatomic, weak) NSObject<GMGridViewDataSource> *dataSource;                    // Required
-@property (nonatomic, weak) NSObject<GMGridViewActionDelegate> *actionDelegate;            // Optional - to get taps callback
-@property (nonatomic, weak) NSObject<GMGridViewSortingDelegate> *sortingDelegate;          // Optional - to enable sorting
-@property (nonatomic, weak) NSObject<GMGridViewTransformationDelegate> *transformDelegate; // Optional - to enable fullsize mode
+@property (nonatomic, gm_weak) IBOutlet NSObject<GMGridViewDataSource> *dataSource;                    // Required
+@property (nonatomic, gm_weak) IBOutlet NSObject<GMGridViewActionDelegate> *actionDelegate;            // Optional - to get taps callback & deleting item
+@property (nonatomic, gm_weak) IBOutlet NSObject<GMGridViewSortingDelegate> *sortingDelegate;          // Optional - to enable sorting
+@property (nonatomic, gm_weak) IBOutlet NSObject<GMGridViewTransformationDelegate> *transformDelegate; // Optional - to enable fullsize mode
 
 // Layout Strategy
-@property (nonatomic, strong) id<GMGridViewLayoutStrategy> layoutStrategy; // Default is GMGridViewLayoutVerticalStrategy
+@property (nonatomic, strong) IBOutlet id<GMGridViewLayoutStrategy> layoutStrategy; // Default is GMGridViewLayoutVerticalStrategy
 
 // Editing Mode
 @property (nonatomic, getter=isEditing) BOOL editing; // Default is NO - When set to YES, all gestures are disabled and delete buttons shows up on cells
+- (void)setEditing:(BOOL)editing animated:(BOOL)animated;
 
 // Customizing Options
-@property (nonatomic, weak) UIView *mainSuperView;                    // Default is self
+@property (nonatomic, gm_weak) IBOutlet UIView *mainSuperView;        // Default is self
 @property (nonatomic) GMGridViewStyle style;                          // Default is GMGridViewStyleSwap
 @property (nonatomic) NSInteger itemSpacing;                          // Default is 10
 @property (nonatomic) BOOL centerGrid;                                // Default is YES
 @property (nonatomic) UIEdgeInsets minEdgeInsets;                     // Default is (5, 5, 5, 5)
-@property (nonatomic) CFTimeInterval minimumPressDuration;            // Default is 0.2; if set to 0, the scrollView will not be scrollable
+@property (nonatomic) CFTimeInterval minimumPressDuration;            // Default is 0.2; if set to 0, the view wont be scrollable
 @property (nonatomic) BOOL showFullSizeViewWithAlphaWhenTransforming; // Default is YES - not working right now
+
+@property (nonatomic, readonly) UIScrollView *scrollView __attribute__((deprecated)); // The grid now inherits directly from UIScrollView
 
 @property (nonatomic, strong) IBOutlet UIView *gridHeaderView;
 @property (nonatomic, strong) IBOutlet UIView *gridFooterView;
 
 // Reusable cells
-- (GMGridViewCell *)dequeueReusableCell;
+- (GMGridViewCell *)dequeueReusableCell;                              // Should be called in GMGridView:cellForItemAtIndex: to reuse a cell
+- (GMGridViewCell *)dequeueReusableCellWithIdentifier:(NSString *)identifier;
+
+// Cells
+- (GMGridViewCell *)cellForItemAtIndex:(NSInteger)position;           // Might return nil if cell not loaded yet
 
 // Actions
 - (void)reloadData;
-- (void)insertObjectAtIndex:(NSInteger)index;
-- (void)removeObjectAtIndex:(NSInteger)index;
-- (void)reloadObjectAtIndex:(NSInteger)index;
-- (void)swapObjectAtIndex:(NSInteger)index1 withObjectAtIndex:(NSInteger)index2;
-- (void)scrollToObjectAtIndex:(NSInteger)index;
+- (void)insertObjectAtIndex:(NSInteger)index animated:(BOOL)animated;
+- (void)insertObjectAtIndex:(NSInteger)index withAnimation:(GMGridViewItemAnimation)animation;
+- (void)removeObjectAtIndex:(NSInteger)index animated:(BOOL)animated;
+- (void)removeObjectAtIndex:(NSInteger)index withAnimation:(GMGridViewItemAnimation)animation;
+- (void)reloadObjectAtIndex:(NSInteger)index animated:(BOOL)animated;
+- (void)reloadObjectAtIndex:(NSInteger)index withAnimation:(GMGridViewItemAnimation)animation;
+- (void)swapObjectAtIndex:(NSInteger)index1 withObjectAtIndex:(NSInteger)index2 animated:(BOOL)animated;
+- (void)swapObjectAtIndex:(NSInteger)index1 withObjectAtIndex:(NSInteger)index2 withAnimation:(GMGridViewItemAnimation)animation;
+- (void)scrollToObjectAtIndex:(NSInteger)index atScrollPosition:(GMGridViewScrollPosition)scrollPosition animated:(BOOL)animated;
+
+// Force the grid to update properties in an (probably) animated way.
+- (void)layoutSubviewsWithAnimation:(GMGridViewItemAnimation)animation;
 
 @end
 
@@ -98,13 +124,19 @@ typedef enum
 @required
 // Populating subview items 
 - (NSInteger)numberOfItemsInGMGridView:(GMGridView *)gridView;
-- (CGSize)sizeForItemsInGMGridView:(GMGridView *)gridView;
+- (CGSize)GMGridView:(GMGridView *)gridView sizeForItemsInInterfaceOrientation:(UIInterfaceOrientation)orientation;
 - (GMGridViewCell *)GMGridView:(GMGridView *)gridView cellForItemAtIndex:(NSInteger)index;
 
 @optional
-// Required to enable editing mode
-- (void)GMGridView:(GMGridView *)gridView deleteItemAtIndex:(NSInteger)index;
+// Allow a cell to be deletable. If not implemented, YES is assumed.
+- (BOOL)GMGridView:(GMGridView *)gridView canDeleteItemAtIndex:(NSInteger)index;
+- (BOOL)GMGridView:(GMGridView *)gridView canMoveItemAtIndex:(NSInteger)index;
+- (BOOL)GMGridView:(GMGridView *)gridView canMoveToItemAtIndex:(NSInteger)index;
 
+//Allow long press to edit
+- (BOOL)GMGridViewAllowLongPressToEdit:(GMGridView *)gridView;
+- (void)GMGridViewDidStartEdit:(GMGridView *)gridView;
+- (void)GMGridViewDidEndEdit:(GMGridView *)gridView;
 @end
 
 
@@ -116,6 +148,13 @@ typedef enum
 
 @required
 - (void)GMGridView:(GMGridView *)gridView didTapOnItemAtIndex:(NSInteger)position;
+
+@optional
+// Tap on space without any items
+- (void)GMGridViewDidTapOnEmptySpace:(GMGridView *)gridView;
+// Called when the delete-button has been pressed. Required to enable editing mode.
+// This method wont delete the cell automatically. Call the delete method of the gridView when appropriate.
+- (void)GMGridView:(GMGridView *)gridView processDeleteActionForItemAtIndex:(NSInteger)index;
 
 @end
 
@@ -148,8 +187,8 @@ typedef enum
 
 @required
 // Fullsize
-- (CGSize)GMGridView:(GMGridView *)gridView sizeInFullSizeForCell:(GMGridViewCell *)cell;
-- (UIView *)GMGridView:(GMGridView *)gridView fullSizeViewForCell:(GMGridViewCell *)cell;
+- (CGSize)GMGridView:(GMGridView *)gridView sizeInFullSizeForCell:(GMGridViewCell *)cell atIndex:(NSInteger)index inInterfaceOrientation:(UIInterfaceOrientation)orientation;
+- (UIView *)GMGridView:(GMGridView *)gridView fullSizeViewForCell:(GMGridViewCell *)cell atIndex:(NSInteger)index;
 
 // Transformation (pinch, drag, rotate) of the item
 @optional

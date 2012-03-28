@@ -10,8 +10,10 @@
 #import "Demo1ViewController.h"
 #import "GMGridView.h"
 #import "OptionsViewController.h"
+#import "GMGridViewLayoutStrategies.h"
 
 #define NUMBER_ITEMS_ON_LOAD 250
+#define NUMBER_ITEMS_ON_LOAD2 30
 
 //////////////////////////////////////////////////////////////
 #pragma mark -
@@ -20,11 +22,14 @@
 
 @interface Demo1ViewController () <GMGridViewDataSource, GMGridViewSortingDelegate, GMGridViewTransformationDelegate, GMGridViewActionDelegate>
 {
-    __weak GMGridView *_gmGridView;
+    __gm_weak GMGridView *_gmGridView;
     UINavigationController *_optionsNav;
     UIPopoverController *_optionsPopOver;
     
     NSMutableArray *_data;
+    NSMutableArray *_data2;
+    __gm_weak NSMutableArray *_currentData;
+    NSInteger _lastDeleteItemIndexAsked;
 }
 
 - (void)addMoreItem;
@@ -33,6 +38,7 @@
 - (void)presentInfo;
 - (void)presentOptions:(UIBarButtonItem *)barButton;
 - (void)optionsDoneAction;
+- (void)dataSetChange:(UISegmentedControl *)control;
 
 @end
 
@@ -62,22 +68,36 @@
         space2.width = 10;
         
         UIBarButtonItem *refreshButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector(refreshItem)];
-
-        self.navigationItem.leftBarButtonItems = [NSArray arrayWithObjects:addButton, space, removeButton, space2, refreshButton, nil];
         
+        if ([self.navigationItem respondsToSelector:@selector(leftBarButtonItems)]) {
+            self.navigationItem.leftBarButtonItems = [NSArray arrayWithObjects:addButton, space, removeButton, space2, refreshButton, nil];
+        }else {
+            self.navigationItem.leftBarButtonItem = addButton;
+        }
         
         UIBarButtonItem *optionsButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCompose target:self action:@selector(presentOptions:)];
         
-        self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:optionsButton, nil];
+        if ([self.navigationItem respondsToSelector:@selector(rightBarButtonItems)]) {
+            self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:optionsButton, nil];
+        }else {
+            self.navigationItem.rightBarButtonItem = optionsButton;
+        }
         
-                
         _data = [[NSMutableArray alloc] init];
         
         for (int i = 0; i < NUMBER_ITEMS_ON_LOAD; i ++) 
         {
-            [_data addObject:[NSString stringWithFormat:@"%d", i]];
+            [_data addObject:[NSString stringWithFormat:@"A %d", i]];
         }
         
+        _data2 = [[NSMutableArray alloc] init];
+        
+        for (int i = 0; i < NUMBER_ITEMS_ON_LOAD2; i ++) 
+        {
+            [_data2 addObject:[NSString stringWithFormat:@"B %d", i]];
+        }
+        
+        _currentData = _data;
     }
     
     return self;
@@ -103,12 +123,13 @@
     _gmGridView.style = GMGridViewStyleSwap;
     _gmGridView.itemSpacing = spacing;
     _gmGridView.minEdgeInsets = UIEdgeInsetsMake(spacing, spacing, spacing, spacing);
-    _gmGridView.centerGrid = YES;
+    _gmGridView.centerGrid = NO;
     _gmGridView.actionDelegate = self;
     _gmGridView.sortingDelegate = self;
     _gmGridView.transformDelegate = self;
     _gmGridView.dataSource = self;
-        
+//    _gmGridView.layoutStrategy = [GMGridViewLayoutStrategyFactory strategyFromType:GMGridViewLayoutVertical];
+    
     UIButton *infoButton = [UIButton buttonWithType:UIButtonTypeInfoDark];
     infoButton.frame = CGRectMake(self.view.bounds.size.width - 40, 
                                   self.view.bounds.size.height - 40, 
@@ -117,7 +138,19 @@
     infoButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
     [infoButton addTarget:self action:@selector(presentInfo) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:infoButton];
-
+    
+    UISegmentedControl *dataSegmentedControl = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"DataSet 1", @"DataSet 2", nil]];
+    [dataSegmentedControl sizeToFit];
+    dataSegmentedControl.frame = CGRectMake(5, 
+                                            self.view.bounds.size.height - dataSegmentedControl.bounds.size.height - 5,
+                                            dataSegmentedControl.bounds.size.width, 
+                                            dataSegmentedControl.bounds.size.height);
+    dataSegmentedControl.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin;
+    dataSegmentedControl.tintColor = [UIColor greenColor];
+    dataSegmentedControl.selectedSegmentIndex = 0;
+    [dataSegmentedControl addTarget:self action:@selector(dataSetChange:) forControlEvents:UIControlEventValueChanged];
+    [self.view addSubview:dataSegmentedControl];
+    
     
     OptionsViewController *optionsController = [[OptionsViewController alloc] init];
     optionsController.gridView = gmGridView;
@@ -125,11 +158,11 @@
     
     _optionsNav = [[UINavigationController alloc] initWithRootViewController:optionsController];
     
-     if (INTERFACE_IS_PHONE)
-     {
-         UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithTitle:@"Done" style:UIBarButtonItemStyleDone target:self action:@selector(optionsDoneAction)];
-         optionsController.navigationItem.rightBarButtonItem = doneButton;
-     }
+    if (INTERFACE_IS_PHONE)
+    {
+        UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithTitle:@"Done" style:UIBarButtonItemStyleDone target:self action:@selector(optionsDoneAction)];
+        optionsController.navigationItem.rightBarButtonItem = doneButton;
+    }
 }
 
 - (void)viewDidLoad
@@ -138,6 +171,12 @@
     _gmGridView.mainSuperView = self.navigationController.view; //[UIApplication sharedApplication].keyWindow.rootViewController.view;
 }
 
+
+- (void)viewDidUnload
+{
+    [super viewDidUnload];
+    _gmGridView = nil;
+}
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
@@ -167,18 +206,32 @@
 
 - (NSInteger)numberOfItemsInGMGridView:(GMGridView *)gridView
 {
-    return [_data count];
+    return [_currentData count];
 }
 
-- (CGSize)sizeForItemsInGMGridView:(GMGridView *)gridView
+- (CGSize)GMGridView:(GMGridView *)gridView sizeForItemsInInterfaceOrientation:(UIInterfaceOrientation)orientation
 {
     if (INTERFACE_IS_PHONE) 
     {
-        return CGSizeMake(140, 110);
+        if (UIInterfaceOrientationIsLandscape(orientation)) 
+        {
+            return CGSizeMake(170, 135);
+        }
+        else
+        {
+            return CGSizeMake(140, 110);
+        }
     }
     else
     {
-        return CGSizeMake(230, 175);
+        if (UIInterfaceOrientationIsLandscape(orientation)) 
+        {
+            return CGSizeMake(285, 205);
+        }
+        else
+        {
+            return CGSizeMake(230, 175);
+        }
     }
 }
 
@@ -186,7 +239,7 @@
 {
     //NSLog(@"Creating view indx %d", index);
     
-    CGSize size = [self sizeForItemsInGMGridView:gridView];
+    CGSize size = [self GMGridView:gridView sizeForItemsInInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation]];
     
     GMGridViewCell *cell = [gridView dequeueReusableCell];
     
@@ -200,10 +253,6 @@
         view.backgroundColor = [UIColor redColor];
         view.layer.masksToBounds = NO;
         view.layer.cornerRadius = 8;
-        view.layer.shadowColor = [UIColor grayColor].CGColor;
-        view.layer.shadowOffset = CGSizeMake(5, 5);
-        view.layer.shadowPath = [UIBezierPath bezierPathWithRect:view.bounds].CGPath;
-        view.layer.shadowRadius = 8;
         
         cell.contentView = view;
     }
@@ -212,7 +261,7 @@
     
     UILabel *label = [[UILabel alloc] initWithFrame:cell.contentView.bounds];
     label.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    label.text = (NSString *)[_data objectAtIndex:index];
+    label.text = (NSString *)[_currentData objectAtIndex:index];
     label.textAlignment = UITextAlignmentCenter;
     label.backgroundColor = [UIColor clearColor];
     label.textColor = [UIColor blackColor];
@@ -222,9 +271,38 @@
     return cell;
 }
 
-- (void)GMGridView:(GMGridView *)gridView deleteItemAtIndex:(NSInteger)index
+
+- (BOOL)GMGridView:(GMGridView *)gridView canDeleteItemAtIndex:(NSInteger)index
 {
-    [_data removeObjectAtIndex:index];
+    return YES; //index % 2 == 0;
+}
+
+- (BOOL)GMGridView:(GMGridView *)gridView canMoveItemAtIndex:(NSInteger)index{
+    if (index == [_currentData count]) {
+        return NO;
+    }
+    
+    return YES;
+}
+
+- (BOOL)GMGridView:(GMGridView *)gridView canMoveToItemAtIndex:(NSInteger)index{
+    if (index == [_currentData count]) {
+        return NO;
+    }
+    
+    return YES;
+}
+
+- (BOOL)GMGridViewAllowLongPressToEdit:(GMGridView *)gridView{
+    return YES;
+}
+
+- (void)GMGridViewDidStartEdit:(GMGridView *)gridView{
+
+}
+
+- (void)GMGridViewDidEndEdit:(GMGridView *)gridView{
+
 }
 
 //////////////////////////////////////////////////////////////
@@ -233,10 +311,26 @@
 
 - (void)GMGridView:(GMGridView *)gridView didTapOnItemAtIndex:(NSInteger)position
 {
-    NSLog(@"DId tap at index %d", position);
+    NSLog(@"Did tap at index %d", position);
 }
 
+- (void)GMGridView:(GMGridView *)gridView processDeleteActionForItemAtIndex:(NSInteger)index
+{
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Confirm" message:@"Are you sure you want to delete this item?" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Delete", nil];
+    
+    [alert show];
+    
+    _lastDeleteItemIndexAsked = index;
+}
 
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
+{
+    if (buttonIndex == 1) 
+    {
+        [_currentData removeObjectAtIndex:_lastDeleteItemIndexAsked];
+        [_gmGridView removeObjectAtIndex:_lastDeleteItemIndexAsked withAnimation:GMGridViewItemAnimationFade];
+    }
+}
 
 //////////////////////////////////////////////////////////////
 #pragma mark GMGridViewSortingDelegate
@@ -275,14 +369,14 @@
 
 - (void)GMGridView:(GMGridView *)gridView moveItemAtIndex:(NSInteger)oldIndex toIndex:(NSInteger)newIndex
 {
-    NSObject *object = [_data objectAtIndex:oldIndex];
-    [_data removeObject:object];
-    [_data insertObject:object atIndex:newIndex];
+    NSObject *object = [_currentData objectAtIndex:oldIndex];
+    [_currentData removeObject:object];
+    [_currentData insertObject:object atIndex:newIndex];
 }
 
 - (void)GMGridView:(GMGridView *)gridView exchangeItemAtIndex:(NSInteger)index1 withItemAtIndex:(NSInteger)index2
 {
-    [_data exchangeObjectAtIndex:index1 withObjectAtIndex:index2];
+    [_currentData exchangeObjectAtIndex:index1 withObjectAtIndex:index2];
 }
 
 
@@ -290,30 +384,44 @@
 #pragma mark DraggableGridViewTransformingDelegate
 //////////////////////////////////////////////////////////////
 
-- (CGSize)GMGridView:(GMGridView *)gridView sizeInFullSizeForCell:(GMGridViewCell *)cell
+- (CGSize)GMGridView:(GMGridView *)gridView sizeInFullSizeForCell:(GMGridViewCell *)cell atIndex:(NSInteger)index inInterfaceOrientation:(UIInterfaceOrientation)orientation
 {
     if (INTERFACE_IS_PHONE) 
     {
-        return CGSizeMake(310, 310);
+        if (UIInterfaceOrientationIsLandscape(orientation)) 
+        {
+            return CGSizeMake(320, 210);
+        }
+        else
+        {
+            return CGSizeMake(300, 310);
+        }
     }
     else
     {
-        return CGSizeMake(700, 530);
+        if (UIInterfaceOrientationIsLandscape(orientation)) 
+        {
+            return CGSizeMake(700, 530);
+        }
+        else
+        {
+            return CGSizeMake(600, 500);
+        }
     }
 }
 
-- (UIView *)GMGridView:(GMGridView *)gridView fullSizeViewForCell:(GMGridViewCell *)cell
+- (UIView *)GMGridView:(GMGridView *)gridView fullSizeViewForCell:(GMGridViewCell *)cell atIndex:(NSInteger)index
 {
     UIView *fullView = [[UIView alloc] init];
     fullView.backgroundColor = [UIColor yellowColor];
     fullView.layer.masksToBounds = NO;
     fullView.layer.cornerRadius = 8;
     
-    CGSize size = [self GMGridView:gridView sizeInFullSizeForCell:cell];
+    CGSize size = [self GMGridView:gridView sizeInFullSizeForCell:cell atIndex:index inInterfaceOrientation:[[UIApplication sharedApplication] statusBarOrientation]];
     fullView.bounds = CGRectMake(0, 0, size.width, size.height);
     
     UILabel *label = [[UILabel alloc] initWithFrame:fullView.bounds];
-    label.text = @"Fullscreen View";
+    label.text = [NSString stringWithFormat:@"Fullscreen View for cell at index %d", index];
     label.textAlignment = UITextAlignmentCenter;
     label.backgroundColor = [UIColor clearColor];
     label.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -372,33 +480,33 @@
     // Example: adding object at the last position
     NSString *newItem = [NSString stringWithFormat:@"%d", (int)(arc4random() % 1000)];
     
-    [_data addObject:newItem];
-    [_gmGridView insertObjectAtIndex:[_data count] - 1];
+    [_currentData addObject:newItem];
+    [_gmGridView insertObjectAtIndex:[_currentData count] - 1 withAnimation:GMGridViewItemAnimationFade | GMGridViewItemAnimationScroll];
 }
 
 - (void)removeItem
 {
     // Example: removing last item
-    if ([_data count] > 0) 
+    if ([_currentData count] > 0) 
     {
-        NSInteger index = [_data count] - 1;
+        NSInteger index = [_currentData count] - 1;
         
-        [_gmGridView removeObjectAtIndex:index];
-        [_data removeObjectAtIndex:index];
+        [_gmGridView removeObjectAtIndex:index withAnimation:GMGridViewItemAnimationFade | GMGridViewItemAnimationScroll];
+        [_currentData removeObjectAtIndex:index];
     }
 }
 
 - (void)refreshItem
 {
     // Example: reloading last item
-    if ([_data count] > 0) 
+    if ([_currentData count] > 0) 
     {
-        int index = [_data count] - 1;
+        int index = [_currentData count] - 1;
         
         NSString *newMessage = [NSString stringWithFormat:@"%d", (arc4random() % 1000)];
         
-        [_data replaceObjectAtIndex:index withObject:newMessage];
-        [_gmGridView reloadObjectAtIndex:index];
+        [_currentData replaceObjectAtIndex:index withObject:newMessage];
+        [_gmGridView reloadObjectAtIndex:index withAnimation:GMGridViewItemAnimationFade | GMGridViewItemAnimationScroll];
     }
 }
 
@@ -413,6 +521,13 @@
                                               otherButtonTitles:nil];
     
     [alertView show];
+}
+
+- (void)dataSetChange:(UISegmentedControl *)control
+{
+    _currentData = ([control selectedSegmentIndex] == 0) ? _data : _data2;
+
+    [_gmGridView reloadData];
 }
 
 - (void)presentOptions:(UIBarButtonItem *)barButton

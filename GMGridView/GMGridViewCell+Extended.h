@@ -1,5 +1,5 @@
 //
-//  UIView+GMGridViewShake.m
+//  GMGridViewCell+Extended.h
 //  GMGridView
 //
 //  Created by Gulam Moledina on 11-10-22.
@@ -26,50 +26,37 @@
 //  THE SOFTWARE.
 //
 
-#import <Quartzcore/QuartzCore.h>
-#import "UIView+GMGridViewAdditions.h"
+#import <Foundation/Foundation.h>
+#import "GMGridView-Constants.h"
+#import "GMGridView.h"
+#import "GMGridViewCell.h"
 
-@interface UIView (GMGridViewAdditions_Privates)
+typedef void (^GMGridViewCellDeleteBlock)(GMGridViewCell*);
 
-- (void)shakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context;
+//////////////////////////////////////////////////////////////
+#pragma mark - Interface GMGridViewCell (Extended)
+//////////////////////////////////////////////////////////////
 
-@end
+@interface GMGridViewCell () 
 
+@property (nonatomic, strong) UIView *fullSizeView;
+@property (nonatomic, assign) CGSize fullSize;
 
+@property (nonatomic, readonly, getter=isInShakingMode) BOOL inShakingMode;
+@property (nonatomic, readonly, getter=isInFullSizeMode) BOOL inFullSizeMode;
 
+@property (nonatomic, getter=isEditing) BOOL editing;
+- (void)setEditing:(BOOL)editing animated:(BOOL)animated;
 
-@implementation UIView (GMGridViewAdditions)
+@property (nonatomic, copy) GMGridViewCellDeleteBlock deleteBlock;
 
-- (void)shakeStatus:(BOOL)enabled
-{
-    if (enabled) 
-    {
-        CGFloat rotation = 4 * M_PI / 180;
-        
-        self.transform = CGAffineTransformMakeRotation(-1 * rotation);
-        
-        [UIView beginAnimations:nil context:nil];
-        [UIView setAnimationRepeatAutoreverses:YES];
-        [UIView setAnimationRepeatCount:MAXFLOAT];
-        [UIView setAnimationDuration:0.17];
-        [UIView setAnimationDelegate:self];
-        [UIView setAnimationDidStopSelector:@selector(shakeEnded:finished:context:)];
-        
-        self.transform = CGAffineTransformMakeRotation(rotation);
-        
-        [UIView commitAnimations];
-    }
-    else
-    {
-        [self.layer removeAllAnimations];
-    }
-}
+@property (nonatomic, assign) UIViewAutoresizing defaultFullsizeViewResizingMask;
+@property (nonatomic, gm_weak) UIButton *deleteButton;
 
-- (void)shakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context 
-{
-    [UIView animateWithDuration:0.2 animations:^{
-        self.transform = CGAffineTransformIdentity;
-    }];
-}
+- (void)prepareForReuse;
+- (void)shake:(BOOL)on; // shakes the contentView only, not the fullsize one
+
+- (void)switchToFullSizeMode:(BOOL)fullSizeEnabled;
+- (void)stepToFullsizeWithAlpha:(CGFloat)alpha; // not supported yet
 
 @end

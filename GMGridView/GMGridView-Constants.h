@@ -1,12 +1,12 @@
 //
-//  GMGridViewCell+Extended.h
+//  GMGridView-Constants.h
 //  GMGridView
 //
-//  Created by Gulam Moledina on 11-10-22.
+//  Created by Gulam Moledina on 11-12-14.
 //  Copyright (c) 2011 GMoledina.ca. All rights reserved.
 //
 //  Latest code can be found on GitHub: https://github.com/gmoledina/GMGridView
-//
+// 
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
 //  in the Software without restriction, including without limitation the rights
@@ -26,38 +26,38 @@
 //  THE SOFTWARE.
 //
 
-#import <Foundation/Foundation.h>
-#import "GMGridViewCell.h"
 
-typedef void (^GMGridViewCellDeleteBlock)(GMGridViewCell*);
-
-//////////////////////////////////////////////////////////////
-#pragma mark -
-#pragma mark Interface GMGridViewCell (Extended)
-//////////////////////////////////////////////////////////////
-
-@interface GMGridViewCell () 
-{
-    
-}
-
-@property (nonatomic, strong) UIView *fullSizeView;
-@property (nonatomic, assign) CGSize fullSize;
-
-@property (nonatomic, readonly, getter=isInShakingMode) BOOL inShakingMode;
-@property (nonatomic, readonly, getter=isInFullSizeMode) BOOL inFullSizeMode;
-
-@property (nonatomic, getter=isEditing) BOOL editing;
-@property (nonatomic, copy) GMGridViewCellDeleteBlock deleteBlock;
-
-@property (nonatomic, assign) UIViewAutoresizing defaultFullsizeViewResizingMask;
-@property (nonatomic, weak) UIButton *deleteButton;
+#ifndef GMGridView_GMGridView_Constants_h
+#define GMGridView_GMGridView_Constants_h
 
 
-- (void)prepareForReuse;
-- (void)shake:(BOOL)on; // shakes the contentView only, not the fullsize one
+//
+// ARC on iOS 4 and 5 
+//
 
-- (void)switchToFullSizeMode:(BOOL)fullSizeEnabled;
-- (void)stepToFullsizeWithAlpha:(CGFloat)alpha; // not supported yet
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_5_0 && !defined (GM_DONT_USE_ARC_WEAK_FEATURE)
 
-@end
+#define gm_weak   weak
+#define __gm_weak __weak
+#define gm_nil(x)
+
+
+#else
+
+#define gm_weak   unsafe_unretained
+#define __gm_weak __unsafe_unretained
+#define gm_nil(x) x = nil
+
+#endif
+
+
+//
+// Code specific
+//
+
+#define GMGV_INVALID_POSITION -1
+
+
+
+
+#endif
